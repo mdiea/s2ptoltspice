@@ -4,7 +4,7 @@ Converts two-port Touchstone files to **LTspice** subcircuit.
 It create: 
 - `[name].sub`: The subcircuit
 - `[name].asy`: The circuit model. 
-- `test-[name].0dB.asc`: An LTspice circuit example where is used the circuit model.
+- `test-[name].asc`: An LTspice circuit example where is used the circuit model.
 
 
 ```
