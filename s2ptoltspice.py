@@ -6,12 +6,39 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, FileType
 from pathlib import Path
 from skrf import Network
-
+from re import match
 
 # Function to prompt the user for confirmation to overwrite a file
 def ask_overwrite(file_path):
     response = input(f"File {file_path} already exists. Do you want to overwrite it? (y/n): ")
     return response.lower() == 'y'
+
+# Function to convert frequency units to Hz
+def convert_frequency(value):
+    """
+    Converts a frequency value in string format to a numeric value in Hz.
+    Example input: '425MHz', '1GHz', etc.
+    """
+    m = match(r'(\d+\.?\d*)([a-zA-Z]+)', value.lower())
+    if not m:
+        raise ValueError(f"Invalid frequency: {value}")
+    
+    number, unit = m.groups()
+    number = float(number)
+    
+    unit_map = {
+        'hz': 1,
+        'khz': 1e3,
+        'mhz': 1e6,
+        'ghz': 1e9
+    }
+    
+    if unit not in unit_map:
+        raise ValueError(f"Unsupported frequency unit: {unit}")
+    
+    return number * unit_map[unit]
+
+
 
 
 # Define the main function
@@ -26,7 +53,7 @@ def main():
     parser.add_argument(
         '--version', 
         action='version', 
-        version='%(prog)s 0.1',  # Replace with your program's version
+        version='%(prog)s x.x',  # Replace with your program's version
         help="Show program's version number and exit"
     )
 
@@ -42,6 +69,21 @@ def main():
         action='store_true', 
         help="If specified, suppress all output messages"
     )
+
+    # Add frequency range arguments
+    parser.add_argument(
+        '--fmin', 
+        type=str, 
+        default=None, 
+        help="Minimum frequency in Hz, kHz, MHz or GHz (optional)"
+    )
+    parser.add_argument(
+        '--fmax', 
+        type=str, 
+        default=None, 
+        help="Maximum frequency in Hz, kHz, MHz or GHz (optional)"
+    )
+
     # Add a file argument for the text file
     parser.add_argument(
         's2p_file', 
@@ -64,7 +106,7 @@ def main():
         #print("File Content:")
         #print(content)
 
-    # Definir el nombre del archivo de salida y el archivo touchstone
+    # Define input and output names
     name = Path(args.s2p_file.name).stem
     sub_file = name + '.sub'
     asy_file = name + '.asy'
@@ -79,14 +121,26 @@ def main():
         print(f"Error loading Touchstone file: {e}")
         exit(1)  # Exit the program with an error code
 
-    frequencies = touchstone.f.squeeze()
+    # Convert the minimum and maximum frequencies if specified
+    fmin = convert_frequency(args.fmin) if args.fmin else touchstone.f[0]
+    fmax = convert_frequency(args.fmax) if args.fmax else touchstone.f[-1]
+
+    # Filter the network to only include frequencies within the selected range
+    touchstone_filtered = touchstone[f'{fmin}Hz-{fmax}Hz']
+    print_if_not_silent(f"Filtered frequencies: from {touchstone_filtered.f[0]}Hz to {touchstone_filtered.f[-1]}Hz")
+
+    frequencies = touchstone_filtered.f.squeeze()
+    Z01=touchstone.z0[0].real[0]
+    print_if_not_silent(f"Z0 port 1 example only: {Z01}")
+    Z02=touchstone.z0[0].real[1]
+    print_if_not_silent(f"Z0 port 2 example only: {Z02}")
 
     # Create the dictionary of S parameters
     s_parameters = {
-        'B11 11 12 V={V(10,3)}': (touchstone.s11.s_re.squeeze(), touchstone.s11.s_im.squeeze()),
-        'B22 22 3  V={V(20,3)}': (touchstone.s22.s_re.squeeze(), touchstone.s22.s_im.squeeze()),
-        'B12 12 3  V={V(20,3)}': (touchstone.s12.s_re.squeeze(), touchstone.s12.s_im.squeeze()),
-        'B21 21 22 V={V(10,3)}': (touchstone.s21.s_re.squeeze(), touchstone.s21.s_im.squeeze())
+        'B11 11 12 V={V(10,3)}': (touchstone_filtered.s11.s_re.squeeze(), touchstone_filtered.s11.s_im.squeeze()),
+        'B22 22 3  V={V(20,3)}': (touchstone_filtered.s22.s_re.squeeze(), touchstone_filtered.s22.s_im.squeeze()),
+        'B12 12 3  V={V(20,3)}': (touchstone_filtered.s12.s_re.squeeze(), touchstone_filtered.s12.s_im.squeeze()),
+        'B21 21 22 V={V(10,3)}': (touchstone_filtered.s21.s_re.squeeze(), touchstone_filtered.s21.s_im.squeeze())
     }
 
     # Helper function to format the parameters
@@ -187,12 +241,12 @@ def main():
         'WINDOW 123 24 124 Left 2\n',
         'WINDOW 39 24 152 Left 2\n',
         'SYMATTR Value2 AC 1\n',
-        'SYMATTR SpiceLine Rser=50\n',
+        f'SYMATTR SpiceLine Rser={Z01}\n',
         'SYMATTR InstName V1\n',
         'SYMATTR Value ""\n',
         'SYMBOL res 336 160 R0\n',
         'SYMATTR InstName RL\n',
-        'SYMATTR Value 50\n',
+        f'SYMATTR Value {Z02}\n',
         f'SYMBOL {name} 192 128 R0\n',
         'SYMATTR InstName U1\n',
         f'TEXT 40 0 Left 2 !.ac lin {len(frequencies)} {frequencies[0]} {frequencies[-1]}\n',
