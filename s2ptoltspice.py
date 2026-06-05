@@ -146,7 +146,8 @@ def main():
     # Helper function to format the parameters
     def format_s_parameter(name, re, im, freqs):
         data = [f'({freq},{r:.12e},{i:.12e})' for freq, r, i in zip(freqs, re, im)]
-        return f'{name} R_I FREQ ' + ' +( '.join(data) + ')\n'
+        lines = [f'{name} R_I FREQ {data[0]}'] + [f'+{d}' for d in data[1:]]
+        return '\n'.join(lines) + '\n'
 
 
     # Check if any files exist and ask whether to overwrite (unless --overwrite is specified)
@@ -171,8 +172,6 @@ def main():
         # Collect the S parameter data and write it all at once
         for nombre, (re, im) in s_parameters.items():
             archivo.write(format_s_parameter(nombre, re, im, frequencies))
-            if not s_param_text.endswith('\n'):
-                s_param_text += '\n'
         archivo.write('.ends s_block')
 
     print_if_not_silent(f"Write {sub_file}")
