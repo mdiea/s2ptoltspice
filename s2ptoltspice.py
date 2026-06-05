@@ -171,7 +171,8 @@ def main():
         # Collect the S parameter data and write it all at once
         for nombre, (re, im) in s_parameters.items():
             archivo.write(format_s_parameter(nombre, re, im, frequencies))
-        
+            if not s_param_text.endswith('\n'):
+                s_param_text += '\n'
         archivo.write('.ends s_block')
 
     print_if_not_silent(f"Write {sub_file}")
