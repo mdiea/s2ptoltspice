@@ -28,6 +28,8 @@ jobs:
           nuitka-version: main
           script-name: s2ptoltspice.py
           mode: app
+          enable-plugins: no-qt
+          
 
       # Uploads artifact
       - name: Upload Artifact
