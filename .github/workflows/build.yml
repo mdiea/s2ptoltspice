@@ -39,7 +39,7 @@ jobs:
 
       - name: Create zip file
         run: |
-          powershell Compress-Archive -Path build\s2ptoltspice.exe -DestinationPath build\s2ptoltspice.zip
+          powershell Compress-Archive -Path build\s2ptoltspice.exe, filter.s2p, filterInv.s2p -DestinationPath build\s2ptoltspice.zip
 
       - name: Upload zip to release
         uses: softprops/action-gh-release@v1

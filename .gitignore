@@ -173,7 +173,7 @@ cython_debug/
 *.asy
 *.asc
 *.raw
-*.s2p
+*.net
 *.sub
 *.dist
 *.exe
